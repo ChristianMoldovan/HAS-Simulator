@@ -259,5 +259,5 @@ QoE = exp(-(0.15 * L + 0.19) * N * 30);
 
 % rate = rate * 60; % 1/s -> 1/min
 
-%[E1vod,E2vod] = usereng(rate*60,ratio*100,'vod');
-%[E1live,E2live] = usereng(rate*60,ratio*100,'live');
+[E1vod,E2vod] = usereng(rate*60,ratio*100,'vod');
+[E1live,E2live] = usereng(rate*60,ratio*100,'live');
