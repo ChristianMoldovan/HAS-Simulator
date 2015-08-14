@@ -1,3 +1,5 @@
 runSim2: non-adaptive streaming
 runSim3: adaptive streaming (work in progress, strategies not implemented yet)
-runSim2withData: uses real data instead of generating new random data (work in progress, buggy)
+runSim2withData: uses real data instead or new random data (recommended)
+
+run multiple configurations with qoeareal.m

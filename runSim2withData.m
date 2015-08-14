@@ -12,7 +12,9 @@ dmin = 0;
 % Sij contains 2 sec
 
 lambda = mean(bwPerSecond);
+% lambda = 1/mean(diff(timeOfFrameDownload));
 mu = mean(Sij);
+a = lambda/mu/24;
 duration = 100000;
 fps = 24;
 framesize = 1/fps; % s
@@ -23,13 +25,15 @@ else
 end
 Sij = tmu;
 
+
 if (strcmp(arrival,'D'))
 %     tlambda = bwPerSecond;
     tlambda = diff(timeOfFrameDownload);
+% tlambda = interarrivaltime of frames
 else
+    lambda = 1/mean(diff(timeOfFrameDownload));
     tlambda = generateTraffic(arrival, duration, cv, lambda);
 end
-
 % Sij = repmat(Sij,1,fps);
 % Sij=reshape(Sij',1,numel(Sij))'*framesize;
 % 
@@ -52,7 +56,7 @@ framesize2 = framesize;
 dmax = d * mu / framesize; % packets
 bwPerSecond = diff(replayedFrameData);
 % mu = mu * framesize;
-TPolicyduration = dmax / lambda; % setting TPolicyduration to average stalling length for D-policy
+TPolicyduration = d/a; % setting TPolicyduration to average stalling length for D-policy
 % tlambda = ones(1,duration)*pduration;
 
 % policies:
@@ -132,7 +136,7 @@ startstallingtime=0;
 TP = false;
 
 i = 1;
-while received < length(bwPerSecond) && frame < length(Sij) && received < length(tlambda)
+while received < length(bwPerSecond) && frame < length(tmu) && received < length(tlambda)
     i = i + 1;
     if playing(i-1) == 1
         % busy state
@@ -140,7 +144,9 @@ while received < length(bwPerSecond) && frame < length(Sij) && received < length
             % replay 1 frame
             time(i) = time(i - 1) + framesize2;
             buffer(i) = buffer(i - 1) - tmu(frame);
-            buffertime(i) = max(0,buffertime(i - 1) - framesize);
+            if policy == 2
+                buffertime(i) = max(0,buffertime(i - 1) - framesize);
+            end
             tlambda(received) = tlambda(received) - framesize2;
             frame = frame + 1;
             framesize2 = framesize;
@@ -152,16 +158,18 @@ while received < length(bwPerSecond) && frame < length(Sij) && received < length
             time(i) = time(i - 1) + tlambda(received);
             buffer(i) = buffer(i - 1) + bwPerSecond(received);
             
-            tmuCS = tmu(frame);
-            k = 0;
-            while tmuCS < buffer(i) && frame + k < length(Sij)
-                k = k + 1;
-                %                 if frame + k > duration
-                %                     break;
-                %                 end
-                tmuCS = tmuCS + tmu(frame + k);
+            if policy == 2
+                tmuCS = tmu(frame);
+                k = 0;
+                while tmuCS < buffer(i) && frame + k < length(tmu)
+                    k = k + 1;
+                    %                 if frame + k > duration
+                    %                     break;
+                    %                 end
+                    tmuCS = tmuCS + tmu(frame + k);
+                end
+                buffertime(i)=k*framesize;
             end
-            buffertime(i)=k*framesize;
             
             %             tmuCS = cumsum(tmu(frame:end)); % optimize runtime
             %             buffertime(i) = sum(tmuCS<=buffer(i)) * framesize;
@@ -174,16 +182,18 @@ while received < length(bwPerSecond) && frame < length(Sij) && received < length
         time(i) = time(i - 1) + tlambda(received);
         buffer(i) = buffer(i - 1) + bwPerSecond(received);
         
-        tmuCS = tmu(frame);
-        k = 0;
-        while tmuCS < buffer(i) && frame + k < length(Sij)
-            k = k + 1;
-            %                 if frame + k > duration
-            %                     break;
-            %                 end
-            tmuCS = tmuCS + tmu(frame + k);
+        if policy == 2
+            tmuCS = tmu(frame);
+            k = 0;
+            while tmuCS < buffer(i) && frame + k < length(tmu)
+                k = k + 1;
+                %                 if frame + k > duration
+                %                     break;
+                %                 end
+                tmuCS = tmuCS + tmu(frame + k);
+            end
+            buffertime(i)=k*framesize;
         end
-        buffertime(i)=k*framesize;
         %
         %         tmuCS = cumsum(tmu(frame:end));
         %         buffertime(i) = sum(tmuCS<=buffer(i)) * framesize;
@@ -241,8 +251,8 @@ if plotme
     %     plot([time(1) time(end)],[dmin dmin]);
     xlabel('time [s]')
     ylabel('buffer status')
-    %         plot(time(playing==1),buffer(playing==1),'*r')
-    plot(time(replaytime==1),buffer(replaytime==1),'ok')
+            plot(time(playing==1),buffer(playing==1),'*r')
+%     plot(time(replaytime==1),buffer(replaytime==1),'ok')
     % plot(time,time==tmu,'o')
     legend({'"packets"','seconds'})
     xlim([0 max(time)]);
