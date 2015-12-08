@@ -1,4 +1,8 @@
-function [tlambda] = generateTraffic(arrival, duration, cv, lambda)
+function [tlambda] = generateTraffic(arrival, duration, cv, lambda,autocorrelationvalue)
+
+if nargin <= 4
+    autocorrelationvalue = 0.89;
+end
 
 if strcmp(arrival,'M')
     tlambda = exprnd(1/lambda,1,duration); % s

@@ -8,7 +8,7 @@ close all force;
 % mu = 10;
 % lambda = [0.5 * mu, 0.8*mu];
 
-arrival = 'G';
+arrival = 'M';
 service = 'M';
 % arrival and service
 % M - Markovian
@@ -20,12 +20,14 @@ policy = 2;
 % 1 - n-policy
 % 2 - D-policy
 % 3 - T-policy
-v=[0:10];
+v=logspace(-1,1,10);
 a = [0.8 1 1.2];
+mu = 1;
+lambda = a .* mu;
 % a=0.5;
 n = length(v);
 o = length(a);
-m = 30; % runs
+m = 100; % runs  !!! 1 run ~ 10 sec
 QoE = zeros(m,o,n);
 E1vod = zeros(m,o,n);
 E2vod = zeros(m,o,n);
@@ -36,31 +38,38 @@ N = zeros(m,o,n);
 rate = zeros(m,o,n);
 ratio = zeros(m,o,n);
 StallingRatio = zeros(m,o,n);
+reallambda = zeros(m,o,n);
+realmu = zeros(m,o,n);
+reala = zeros(m,o,n);
+realcv1 = zeros(m,o,n);
+realcv2 = zeros(m,o,n);
 permutevideo = 1;
 circshiftvideo = 0;
-load framesizeData;
+% load framesizeData;
 % load timeOfFrameDownload;
 % Sij = frameSize(:,3);
-Sij = sum(frameSize'); % video bitrate / 24
+% Sij = sum(frameSize'); % video bitrate / 24
 % Sij=Sij(end:-1:1);
-
-waitb = waitbar(0,'1','Name','Simulating Video Streaming');
-for j=1:m
-    [bwPerSecond1,Sijx]=getData(j-1,1);
-    lambdaeingabe = bwPerSecond1 / 8 * 1000; % bandwidth
-    lambda=mean(lambdaeingabe);
-    if permutevideo == 1
-        idx = randperm(length(Sij)); %shuffle framess
-        Sij = Sij(idx);
-    end
-    if circshiftvideo == 1
-        Sij = circshift(Sij,[0 ceil(length(Sij)/7)]);
-    end
-%     Sij = Sij(:,3);
-    mu = mean(Sij)*24;
-    a0 = lambda./mu;
     dmax = 5; % sec
     d = dmax * mu; % frames
+    simtime = 600;
+tic
+waitb = waitbar(0,'1','Name','Simulating Video Streaming');
+for j=1:m
+%     [bwPerSecond1,Sijx]=getData(j-1,1);
+%     lambdaeingabe = bwPerSecond1 / 8 * 1000; % bandwidth
+%     lambda=mean(lambdaeingabe);
+%     if permutevideo == 1
+%         idx = randperm(length(Sij)); %shuffle framess
+%         Sij = Sij(idx);
+%     end
+%     if circshiftvideo == 1
+%         Sij = circshift(Sij,[0 ceil(length(Sij)/7)]);
+%     end
+% %     Sij = Sij(:,3);
+%     mu = mean(Sij)*24;
+%     a0 = lambda./mu;
+%     
     
 
 %     lambdaeingabe = 
@@ -70,18 +79,19 @@ for j=1:m
     % v = [1 2 3]; % variations coefficent
     for k=1:o
 %         timeOfFrameDownload = 0;
-        timeOfFrameDownload = getTimeOfFrameDownload(lambdaeingabe/a0*a(k), Sij);
+%         timeOfFrameDownload = getTimeOfFrameDownload(lambdaeingabe/a0*a(k), Sij);
 %         timeOfFrameDownload{j,k} = sim4(lambdaeingabe, Sij(1:end)*a0/a(k));
         for l=1:n
-            tic
+%             tic
             waitbar(j/m,waitb,['traffic pattern ' num2str(j) '/' num2str(m) ', reception ratio ' num2str(k) '/' num2str(o) ', policy ' num2str(l) '/' num2str(n)]);
-            [QoE(j,k,l),E1vod(j,k,l),E2vod(j,k,l),E1live(j,k,l),E2live(j,k,l),N(j,k,l),L(j,k,l),rate(j,k,l),ratio(j,k,l),StallingRatio(j,k,l)] = runSim3withData(lambdaeingabe/a0*a(k),Sij,timeOfFrameDownload,dmax,v(l),0,arrival,service,policy);
-            toc
+%             [QoE(j,k,l),E1vod(j,k,l),E2vod(j,k,l),E1live(j,k,l),E2live(j,k,l),N(j,k,l),L(j,k,l),rate(j,k,l),ratio(j,k,l),StallingRatio(j,k,l)] = runSim3withData(lambdaeingabe/a0*a(k),Sij,timeOfFrameDownload,dmax,v(l),0,arrival,service,policy);
+            [QoE(j,k,l),E1vod(j,k,l),E2vod(j,k,l),E1live(j,k,l),E2live(j,k,l),N(j,k,l),L(j,k,l),rate(j,k,l),ratio(j,k,l),StallingRatio(j,k,l),reallambda(j,k,l), realmu(j,k,l), reala(j,k,l),realcv1(j,k,l),realcv2(j,k,l)] = runSim2(lambda(k),mu,dmax,v(l),0,arrival,service,policy,simtime);
+%             toc
         end
     end
     % v=repmat(v',1,3);
 end
-
+toc
 close(waitb);
 
 AnaL = dmax.*mu./lambda;
@@ -97,7 +107,7 @@ for l=1:o
     x{l} = ['\lambda = ' num2str(a(l)) ' Mbit/s'];
 end
 % x={'n-policy','D-policy','T-policy'};
-% save(['results/' arrival service '_2']);
+save(['results/' arrival service '_3']);
 %% Plot results
 close all;
 conffactor = 1.96;
@@ -106,7 +116,16 @@ for l=1:o
     x{l} = ['\lambda = ' num2str(a(l)) ' Mbit/s'];
 end
 % x={'n-policy','D-policy','T-policy'};
-
+fontsize = 24;
+if strcmp(arrival,'G')
+    cx = 'c_\lambda';
+    cvx = realcv1;
+end
+if strcmp(service,'G')
+    cx = 'c_\mu';
+    cvx = realcv2;
+end
+[e,f]=histc(cvx,[v inf]);
 figure(2)
 box on;
 % mx = reshape(mean(QoE,2),n,o);
@@ -115,12 +134,13 @@ box on;
 %     errorbar(v,mx(:,k),stdx(:,k));
 %     hold on;
 % end
-mQoE = reshape(mean(QoE),o,n);
-sQoE = conffactor * reshape(std(QoE),o,n) / sqrt(m);
-errorbar(v,mQoE(1,:),sQoE(1,:),'-k','LineWidth',2);
+mQoE = reshape(nanmean(QoE),o,n);
+sQoE = conffactor * reshape(nanstd(QoE),o,n) / sqrt(m);
+cols = copper(3);
+errorbar(v,mQoE(1,:),sQoE(1,:),'-k','LineWidth',2,'Color',cols(1,:));
 hold on;
-errorbar(v,mQoE(2,:),sQoE(2,:),'--k','LineWidth',2);
-errorbar(v,mQoE(3,:),sQoE(3,:),':k','LineWidth',2);
+errorbar(v,mQoE(2,:),sQoE(2,:),'--k','LineWidth',2,'Color',cols(2,:));
+errorbar(v,mQoE(3,:),sQoE(3,:),':k','LineWidth',2,'Color',cols(3,:));
 xlim([v(1) v(end)])
 ylim([1.5 5])
 % plot(v,QoE);
@@ -129,56 +149,75 @@ hold on;
 % plot([v(1) v(end)],[AnaQoE; AnaQoE],'k')
 hold on;
 ylabel('mean opinion score MOS')
-xlabel('coefficient of variation c_v')
-legend(x,'Location','SouthEast');
-set(gca,'Fontsize',14)
+xlabel(['coefficient of variation ' cx])
+legend(x,'Location','West');
+set(gca,'Fontsize',fontsize)
+set(gca,'XScale','log')
 saveas(gcf,['figs\corr' arrival service '_QoE_' int2str(permutevideo) int2str(circshiftvideo)],'eps2c');
 
 figure(4)
 box on
-set(gca,'Fontsize',14)
-mN = reshape(mean(N),o,n);
-sN = conffactor * reshape(std(N),o,n) / sqrt(m);
-errorbar(v,mN(1,:),sN(1,:),'-k','LineWidth',2);
+set(gca,'Fontsize',fontsize)
+mN = reshape(nanmean(N.*60),o,n);
+sN = conffactor * reshape(nanstd(N.*60),o,n) / sqrt(m);
+errorbar(v,mN(1,:),sN(1,:),'-k','LineWidth',2,'Color',cols(1,:));
 hold on;
-errorbar(v,mN(2,:),sN(2,:),'--k','LineWidth',2);
-errorbar(v,mN(3,:),sN(3,:),':k','LineWidth',2);
+errorbar(v,mN(2,:),sN(2,:),'--k','LineWidth',2,'Color',cols(2,:));
+errorbar(v,mN(3,:),sN(3,:),':k','LineWidth',2,'Color',cols(3,:));
 xlim([v(1) v(end)])
-ylim([0 max(get(gca,'YLim'))])
+ylim([0 3])
 % plot(v,QoE);
 hold on;
 % plot(v,AnaQoE,'k')
 % plot([v(1) v(end)],[AnaQoE; AnaQoE],'k')
 hold on;
-ylabel('mean frequency of stalling events N')
-xlabel('coefficient of variation c_v')
+ylabel('rate of stalling events [1/min]')
+xlabel(['coefficient of variation ' cx])
 legend(x,'Location','NorthEast');
-set(gca,'Fontsize',14)
+set(gca,'Fontsize',fontsize)
+set(gca,'XScale','log')
 saveas(gcf,['figs\corr' arrival service '_N_' int2str(permutevideo) int2str(circshiftvideo)],'eps2c');
 
 L(L==0)=NaN;
 figure(5)
 box on
-set(gca,'Fontsize',14)
+set(gca,'Fontsize',fontsize)
 mL = reshape(nanmean(L),o,n);
 sL = conffactor * reshape(nanstd(L),o,n) / sqrt(m);
-errorbar(v,mL(1,:),sL(1,:),'-k','LineWidth',2);
+errorbar(v,mL(1,:),sL(1,:),'-k','LineWidth',2,'Color',cols(1,:));
 hold on;
-errorbar(v,mL(2,:),sL(2,:),'--k','LineWidth',2);
-errorbar(v,mL(3,:),sL(3,:),':k','LineWidth',2);
+errorbar(v,mL(2,:),sL(2,:),'--k','LineWidth',2,'Color',cols(2,:));
+errorbar(v,mL(3,:),sL(3,:),':k','LineWidth',2,'Color',cols(3,:));
 xlim([v(1) v(end)])
-ylim([0 max(get(gca,'YLim'))])
+ylim([0 100])
 % plot(v,QoE);
 hold on;
 % ylim([0 20]);
 % plot(v,AnaQoE,'k')
 % plot([v(1) v(end)],[AnaQoE; AnaQoE],'k')
 hold on;
-ylabel('mean length of stalling events L')
-xlabel('coefficient of variation c_v')
+ylabel('length of stalling events L [s]')
+xlabel(['coefficient of variation ' cx])
 legend(x,'Location','NorthEast');
-set(gca,'Fontsize',14)
+set(gca,'Fontsize',fontsize)
+set(gca,'XScale','log')
 saveas(gcf,['figs\corr' arrival service '_L_' int2str(permutevideo) int2str(circshiftvideo)],'eps2c');
+
+% figure(61)
+% cdfplot(reallambda(:))
+% xlabel('mean bandwidth of a run in Mbit/s')
+% 
+% figure(62)
+% cdfplot(realmu(:))
+% xlabel('mean video bit rate of a run in Mbit/s')
+% 
+% figure(63)
+% cdfplot(realcv1(:))
+% xlabel('c_v of the bandwidth')
+% 
+% figure(64)
+% cdfplot(realcv2(:))
+% xlabel('c_v of the bit rate')
 
 % figure(22)
 % errorbar(v,mean(QoE'),std(QoE'));

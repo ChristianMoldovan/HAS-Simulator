@@ -1,4 +1,8 @@
-function [tmu] = generateVideo(service, duration, cv, mu)
+function [tmu] = generateVideo(service, duration, cv, mu, autocorrelationvalue)
+
+if nargin <= 4
+    autocorrelationvalue = 0.89;
+end
 
 if strcmp(service,'M')
     tmu = exprnd(mu,1,duration); % s
